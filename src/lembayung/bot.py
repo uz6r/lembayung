@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Welcome message."""
+    if not update.message:
+        return
     await update.message.reply_text(
         "🌅 *Welcome to Lembayung!*\n\n"
         "I monitor availability and alert you in real-time.\n\n"
@@ -40,6 +42,8 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if settings.time_range_start and settings.time_range_end:
         time_desc = f"{settings.time_range_start}–{settings.time_range_end}"
 
+    if not update.message:
+        return
     await update.message.reply_text(
         f"📊 *Monitoring Status*\n\n"
         f"🏠 Target: `{settings.target_slug}`\n"
@@ -179,6 +183,9 @@ async def handle_date_selection(update: Update, context: ContextTypes.DEFAULT_TY
         return
     await query.answer()
 
+    if not query.data or context.user_data is None:
+        return
+
     date_str = query.data.split(":")[1]
     context.user_data["book_date"] = date_str
 
@@ -204,7 +211,9 @@ async def handle_pax_selection(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.answer()
 
     pax = int(query.data.split(":")[1])
-    date_str = context.user_data.get("book_date", "")
+    date_str = (
+        context.user_data.get("book_date", "") if context.user_data is not None else ""
+    )
 
     await query.edit_message_text(
         f"🔍 Checking {date_str} for {pax} guests...",
@@ -294,7 +303,9 @@ async def handle_slot_selection(update: Update, context: ContextTypes.DEFAULT_TY
 
     parts = query.data.split(":")
     time_val = parts[2] if len(parts) > 2 else "?"
-    date_str = context.user_data.get("book_date", "")
+    date_str = (
+        context.user_data.get("book_date", "") if context.user_data is not None else ""
+    )
     booking_url = f"https://reservation.provider.com/en/block/{settings.target_slug}"
 
     await query.edit_message_text(
