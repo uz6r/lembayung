@@ -74,14 +74,25 @@ TELEGRAM_CHAT_ID=your_chat_id_here
 You can run the worker loop using the configured CLI entry point:
 
 ```bash
+# Recommended (installed via pip -e)
 lembayung
-```
-*or*
-```bash
-python -m lembayung.cli
+
+# Or via the module
+PYTHONPATH=src python3 -m lembayung.cli
 ```
 
-### 5. Local Development and CI
+### 5. Running the Telegram Bot
+The Telegram bot is best run as a separate process:
+
+```bash
+# Recommended (installed via pip -e)
+lembayung-bot
+
+# Or via the module
+PYTHONPATH=src python3 -m lembayung.bot
+```
+
+### 6. Local Development and CI
 To keep code quality high before pushing upstream, you can use the provided Docker-based scripts to run `ruff`, `mypy`, and `pytest` locally without needing to install anything on your host machine:
 
 ```bash
@@ -100,16 +111,19 @@ To keep code quality high before pushing upstream, you can use the provided Dock
 
 These scripts will build a lightweight development container using `uv` for fast dependency resolution and run the tools against your local files.
 
-## Docker Deployment
+## Docker Deployment (Recommended)
 
-A `Dockerfile` is highly recommended for straightforward containerized deployments.
+For production or persistent monitoring, it is highly recommended to use the provided Docker Compose stack which runs both the monitor and the bot as managed services.
 
 ```bash
-docker build -t lembayung .
-docker run -d --env-file .env -v $(pwd)/data:/app/data lembayung
+# Start the entire stack (monitor + bot)
+./scripts/docker-up.sh
+
+# Stop the stack
+./scripts/docker-down.sh
 ```
 
-*Note on Data:* Ensure you map the sqlite database path (configurable via `SQLITE_DB_PATH`) to a persistent volume so it doesn't alert you constantly on every container restart.
+The stack uses `.env.local` for secrets and maps a local `data/` directory for persistent SQLite storage.
 
 ---
 
@@ -118,7 +132,7 @@ docker run -d --env-file .env -v $(pwd)/data:/app/data lembayung
 Lembayung includes a built-in interactive Telegram bot that provides real-time alerts and on-demand booking tools.
 
 ### 1. Configuration
-Ensure your `.env` file contains your Telegram credentials:
+Ensure your `.env` or `.env.local` file contains your Telegram credentials:
 ```dotenv
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 TELEGRAM_CHAT_ID=your_chat_id_here
@@ -132,22 +146,10 @@ TELEGRAM_CHAT_ID=your_chat_id_here
 | `/check` | Runs an immediate availability check (ad-hoc) |
 | `/book` | Interactive flow: pick date → pick pax → see times → booking link |
 
-### 3. Running the Bot
-The Telegram bot runs as a separate process from the main monitoring loop.
-
-**Option A: Separate Processes (Recommended)**
+### 3. Running via Docker
+If using Docker, the `docker-compose.yml` is already configured to run both the monitor and the bot as separate services.
 ```bash
-# Terminal 1: Monitoring Engine
-lembayung
-
-# Terminal 2: Interactive Telegram Bot
-python -m lembayung.bot
-```
-
-**Option B: Docker Compose**
-If using Docker, the `docker-compose.yml` is configured to run both the monitor and the bot as separate services.
-```bash
-docker compose up -d
+./scripts/docker-up.sh
 ```
 ---
 

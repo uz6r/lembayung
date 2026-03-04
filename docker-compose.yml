@@ -1,0 +1,19 @@
+services:
+  monitor:
+    build: .
+    volumes:
+      - ./data:/app/data
+      - .env.local:/app/.env.local:ro
+    environment:
+      - SQLITE_DB_PATH=/app/data/lembayung_state.db
+    command: ["lembayung"]
+    restart: unless-stopped
+
+  bot:
+    build: .
+    volumes:
+      - .env.local:/app/.env.local:ro
+    command: ["python3", "-m", "lembayung.bot"]
+    restart: unless-stopped
+    depends_on:
+      - monitor

@@ -32,6 +32,15 @@ class RateLimitHit(Exception):
     pass
 
 
+class UnauthorizedError(Exception):
+    """
+    Exception raised when the widget API returns a 401 Unauthorized error.
+    Typically means the target ID / slug or API key is invalid or rotated.
+    """
+
+    pass
+
+
 class ProviderAdapter:
     """
     Adapter for the Provider Widget API. This class is designed for technical
@@ -123,6 +132,12 @@ class ProviderAdapter:
             raise RateLimitHit(
                 f"428 Precondition Required for {target_date} pax {party_size}. "
                 "Server requires Altcha/PoW — circuit-breaking this cycle."
+            )
+
+        if response.status_code == 401:
+            raise UnauthorizedError(
+                f"401 Unauthorized for {target_date} pax {party_size}. "
+                f"Invalid API Key or Target Slug: {response.text}"
             )
 
         response.raise_for_status()

@@ -9,11 +9,13 @@ dependencies = [
     "aiosqlite>=0.20.0",
     "tenacity>=8.5.0",
     "pydantic>=2.9.0",
-    "pydantic-settings>=2.5.0"
+    "pydantic-settings>=2.5.0",
+    "python-telegram-bot>=21.0"
 ]
 
 [project.scripts]
 lembayung = "lembayung.cli:main"
+lembayung-bot = "lembayung.bot:run_bot"
 
 [build-system]
 requires = ["setuptools>=61.0"]

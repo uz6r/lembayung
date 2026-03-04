@@ -10,7 +10,7 @@ from telegram.ext import (
     ContextTypes,
 )
 
-from lembayung.adapters.provider import ProviderAdapter, RateLimitHit
+from lembayung.adapters.provider import ProviderAdapter, RateLimitHit, UnauthorizedError
 from lembayung.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -98,6 +98,13 @@ async def check_now(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     logger.warning(f"Ad-hoc check hit 428 on {curr}")
                     rate_limited = True
                     break
+                except UnauthorizedError as e:
+                    logger.error(f"Ad-hoc check unauthorized: {e}")
+                    await update.message.reply_text(
+                        "❌ *Unauthorized Error*\n\nYour API key or Slug appears to be invalid.",
+                        parse_mode="Markdown",
+                    )
+                    return
                 except Exception as e:
                     logger.warning(f"Ad-hoc check error: {e}")
 
@@ -260,6 +267,12 @@ async def handle_pax_selection(update: Update, context: ContextTypes.DEFAULT_TYP
             "⚡ *Rate Limit Hit*\n\n"
             "The provider is currently challenging our automated requests with a verification (Altcha/PoW).\n\n"
             "Please try again in a few minutes or use the official website to book directly.",
+            parse_mode="Markdown",
+        )
+    except UnauthorizedError as e:
+        logger.error(f"Booking flow unauthorized: {e}")
+        await query.edit_message_text(
+            "❌ *Unauthorized Error*\n\nYour API key or Slug appears to be invalid.",
             parse_mode="Markdown",
         )
     except Exception as e:

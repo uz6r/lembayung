@@ -5,7 +5,7 @@ import random
 
 import httpx
 
-from lembayung.adapters.provider import ProviderAdapter, RateLimitHit
+from lembayung.adapters.provider import ProviderAdapter, RateLimitHit, UnauthorizedError
 from lembayung.core.config import settings
 from lembayung.database.sqlite import DatabaseState
 from lembayung.engine.worker import MonitoringWorker
@@ -64,6 +64,13 @@ async def run_monitoring_session(worker: MonitoringWorker, adapter: ProviderAdap
                     f"Will retry next cycle in {settings.poll_interval_seconds}s."
                 )
                 return  # Exit the cycle, let worker sleep and try next cycle
+
+            except UnauthorizedError as e:
+                logger.error(
+                    f"❌ Unauthorized Error (API Key or Slug may be invalid). Aborting worker completely: {e}"
+                )
+                worker.is_running = False
+                return
 
             except httpx.HTTPStatusError as e:
                 logger.error(f"Error checking {curr_date} pax {pax}: {e}")
