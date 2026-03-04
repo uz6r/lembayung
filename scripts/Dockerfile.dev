@@ -1,0 +1,24 @@
+FROM ghcr.io/astral-sh/uv:latest AS uv
+FROM python:3.11-slim
+
+COPY --from=uv /uv /uvx /bin/
+
+# Ensure uv creates venv outside the mounted /app directory
+ENV UV_PROJECT_ENVIRONMENT=/opt/.venv
+ENV PATH="/opt/.venv/bin:$PATH"
+
+WORKDIR /app
+
+# First, copy dependency files to cache the installation
+COPY pyproject.toml .
+
+# Sync dependencies
+RUN uv sync --no-install-project || true
+
+# Copy the rest
+COPY . .
+
+# Final sync
+RUN uv sync || true
+
+CMD ["bash"]
