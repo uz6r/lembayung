@@ -10,7 +10,7 @@ from telegram.ext import (
     ContextTypes,
 )
 
-from lembayung.adapters.provider import ProviderAdapter
+from lembayung.adapters.provider import ProviderAdapter, RateLimitHit
 from lembayung.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -70,6 +70,7 @@ async def check_now(update: Update, context: ContextTypes.DEFAULT_TYPE):
         today = datetime.date.today()
         results = []
 
+        rate_limited = False
         for i in range(min(settings.fetch_days_ahead, 14)):  # Cap at 14 days for ad-hoc
             curr = today + datetime.timedelta(days=i)
             if curr.weekday() not in settings.allowed_weekdays:
@@ -93,17 +94,35 @@ async def check_now(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 s.get("time", s.get("start_time", "?")) for s in slots
                             ]
                             results.append(f"📅 {curr} (pax {pax}): {', '.join(times)}")
+                except RateLimitHit:
+                    logger.warning(f"Ad-hoc check hit 428 on {curr}")
+                    rate_limited = True
+                    break
                 except Exception as e:
                     logger.warning(f"Ad-hoc check error: {e}")
 
                 await asyncio.sleep(1.5)  # Be gentle
 
+            if rate_limited:
+                break
+
         if results:
             msg = "✅ *Available Slots Found:*\n\n" + "\n".join(results)
+            if rate_limited:
+                msg += "\n\n⚠️ *Note:* Check was cut short due to provider rate limiting (verification challenge)."
+        elif rate_limited:
+            msg = (
+                "⚡ *Rate Limit Hit*\n\n"
+                "The provider is currently challenging our requests with a verification (Altcha/PoW).\n\n"
+                "I couldn't complete the full scan. Please try again in 5-10 minutes."
+            )
         else:
             msg = "😔 No available slots found in your configured window."
 
         await update.message.reply_text(msg, parse_mode="Markdown")
+    except Exception as e:
+        logger.error(f"Error in check_now: {e}")
+        await update.message.reply_text("❌ An error occurred during the check.")
     finally:
         await adapter.close()
 
@@ -236,6 +255,19 @@ async def handle_pax_selection(update: Update, context: ContextTypes.DEFAULT_TYP
             reply_markup=InlineKeyboardMarkup(buttons),
             parse_mode="Markdown",
         )
+    except RateLimitHit:
+        await query.edit_message_text(
+            "⚡ *Rate Limit Hit*\n\n"
+            "The provider is currently challenging our automated requests with a verification (Altcha/PoW).\n\n"
+            "Please try again in a few minutes or use the official website to book directly.",
+            parse_mode="Markdown",
+        )
+    except Exception as e:
+        logger.error(f"Error in handle_pax_selection: {e}")
+        await query.edit_message_text(
+            "❌ *An error occurred* while checking availability. Please try again later.",
+            parse_mode="Markdown",
+        )
     finally:
         await adapter.close()
 
@@ -302,6 +334,7 @@ def run_bot():
     app.add_handler(CallbackQueryHandler(handle_back, pattern=r"^book_back$"))
 
     logger.info("🤖 Telegram bot starting...")
+    print("🌅 Lembayung Telegram Bot is active and polling for updates...")
     app.run_polling()
 
 
