@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 import httpx
 
@@ -22,7 +23,7 @@ class NotificationDispatcher:
             return
 
         url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
-        payload = {
+        payload: dict[str, Any] = {
             "chat_id": self.chat_id,
             "text": message,
             "parse_mode": "Markdown",
